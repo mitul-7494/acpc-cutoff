@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>ACPC Cutoff Filter</title>
+  <title>ACPC Cutoff Finder</title>
+
   <style>
     body {
       font-family: Arial;
       margin: 20px;
-      background: #f5f6fa;
+      background: #0f172a;
+      color: #e2e8f0;
     }
 
     h1 {
       text-align: center;
+      color: #38bdf8;
     }
 
     .filters {
@@ -19,35 +22,64 @@
       gap: 10px;
       margin-bottom: 20px;
       justify-content: center;
+      flex-wrap: wrap;
     }
 
-    select, input {
+    select, input, button {
       padding: 8px;
       font-size: 14px;
+      border-radius: 6px;
+      border: none;
+    }
+
+    button {
+      background: #38bdf8;
+      color: black;
+      cursor: pointer;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
+      background: #1e293b;
     }
 
     th, td {
-      border: 1px solid #ddd;
+      border: 1px solid #334155;
       padding: 8px;
       text-align: left;
     }
 
     th {
-      background: #2f80ed;
-      color: white;
+      background: #0ea5e9;
+      color: black;
     }
 
     tr:hover {
-      background: #f1f1f1;
+      background: #334155;
+    }
+
+    .pagination {
+      margin-top: 15px;
+      text-align: center;
+    }
+
+    .pagination button {
+      margin: 3px;
+      padding: 6px 10px;
+      background: #1e293b;
+      color: white;
+      border: 1px solid #38bdf8;
+      cursor: pointer;
+    }
+
+    .pagination button.active {
+      background: #38bdf8;
+      color: black;
     }
   </style>
 </head>
+
 <body>
 
 <h1>ACPC Cutoff Finder</h1>
@@ -78,85 +110,117 @@
   <tbody id="tableBody"></tbody>
 </table>
 
+<div class="pagination" id="pagination"></div>
+
 <script>
 let data = [];
+let filteredData = [];
+let currentPage = 1;
+const rowsPerPage = 20;
 
+// Load JSON
 fetch('./data.json')
-  .then(response => response.json())
+  .then(res => res.json())
   .then(json => {
     data = json;
+    filteredData = data;
+
     populateFilters();
-    renderTable(data);
-  })
-  .catch(err => console.error("Error loading JSON:", err));
-</script>
+    renderTable();
+    renderPagination();
+  });
 
-<script>
-  // 🔴 Replace this with full dataset
-  function populateFilters() {
-    const branchSet = new Set();
-    const categorySet = new Set();
+// Populate dropdowns
+function populateFilters() {
+  const branchSet = new Set();
+  const categorySet = new Set();
 
-    data.forEach(d => {
-      branchSet.add(d.branch);
-      categorySet.add(d.category);
-    });
+  data.forEach(d => {
+    branchSet.add(d.branch);
+    categorySet.add(d.category);
+  });
 
-    const branchSelect = document.getElementById("branch");
-    const categorySelect = document.getElementById("category");
+  const branchSelect = document.getElementById("branch");
+  const categorySelect = document.getElementById("category");
 
-    branchSet.forEach(b => {
-      branchSelect.innerHTML += `<option value="${b}">${b}</option>`;
-    });
+  branchSet.forEach(b => {
+    branchSelect.innerHTML += `<option value="${b}">${b}</option>`;
+  });
 
-    categorySet.forEach(c => {
-      categorySelect.innerHTML += `<option value="${c}">${c}</option>`;
-    });
+  categorySet.forEach(c => {
+    categorySelect.innerHTML += `<option value="${c}">${c}</option>`;
+  });
+}
+
+// Apply filter
+function applyFilter() {
+  const branch = document.getElementById("branch").value;
+  const category = document.getElementById("category").value;
+  const rank = Number(document.getElementById("rank").value);
+
+  filteredData = data;
+
+  if (branch) {
+    filteredData = filteredData.filter(d => d.branch === branch);
   }
 
-  function applyFilter() {
-    const branch = document.getElementById("branch").value;
-    const category = document.getElementById("category").value;
-    const rank = Number(document.getElementById("rank").value);
-
-    let filtered = data;
-
-    if (branch) {
-      filtered = filtered.filter(d => d.branch === branch);
-    }
-
-    if (category) {
-      filtered = filtered.filter(d => d.category === category);
-    }
-
-    if (rank) {
-      filtered = filtered.filter(d => rank <= d.closingRank);
-    }
-
-    // Sort by closing rank ascending
-    filtered.sort((a, b) => a.closingRank - b.closingRank);
-
-    renderTable(filtered);
+  if (category) {
+    filteredData = filteredData.filter(d => d.category === category);
   }
 
-  function renderTable(rows) {
-    const tbody = document.getElementById("tableBody");
-    tbody.innerHTML = "";
-
-    rows.forEach(r => {
-      tbody.innerHTML += `
-        <tr>
-          <td>${r.institute}</td>
-          <td>${r.branch}</td>
-          <td>${r.category}</td>
-          <td>${r.closingRank}</td>
-        </tr>
-      `;
-    });
+  if (rank) {
+    filteredData = filteredData.filter(d => rank <= d.closingRank);
   }
 
-  populateFilters();
-  renderTable(data);
+  filteredData.sort((a, b) => a.closingRank - b.closingRank);
+
+  currentPage = 1;
+  renderTable();
+  renderPagination();
+}
+
+// Render table (with pagination)
+function renderTable() {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+
+  const pageData = filteredData.slice(start, end);
+
+  pageData.forEach(r => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${r.institute}</td>
+        <td>${r.branch}</td>
+        <td>${r.category}</td>
+        <td>${r.closingRank}</td>
+      </tr>
+    `;
+  });
+}
+
+// Pagination buttons
+function renderPagination() {
+  const container = document.getElementById("pagination");
+  container.innerHTML = "";
+
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+
+  for (let i = 1; i <= totalPages; i++) {
+    container.innerHTML += `
+      <button class="${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>
+    `;
+  }
+}
+
+// Change page
+function goToPage(page) {
+  currentPage = page;
+  renderTable();
+  renderPagination();
+}
 </script>
 
 </body>
