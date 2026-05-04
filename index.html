@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ACPC Cutoff Filter</title>
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+      background: #f5f6fa;
+    }
+
+    h1 {
+      text-align: center;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    select, input {
+      padding: 8px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+    }
+
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #2f80ed;
+      color: white;
+    }
+
+    tr:hover {
+      background: #f1f1f1;
+    }
+  </style>
+</head>
+<body>
+
+<h1>ACPC Cutoff Finder</h1>
+
+<div class="filters">
+  <select id="branch">
+    <option value="">All Branches</option>
+  </select>
+
+  <select id="category">
+    <option value="">All Categories</option>
+  </select>
+
+  <input type="number" id="rank" placeholder="Enter your rank" />
+
+  <button onclick="applyFilter()">Filter</button>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Institute</th>
+      <th>Branch</th>
+      <th>Category</th>
+      <th>Closing Rank</th>
+    </tr>
+  </thead>
+  <tbody id="tableBody"></tbody>
+</table>
+
+<script>
+let data = [];
+
+fetch('./data.json')
+  .then(response => response.json())
+  .then(json => {
+    data = json;
+    populateFilters();
+    renderTable(data);
+  })
+  .catch(err => console.error("Error loading JSON:", err));
+</script>
+
+<script>
+  // 🔴 Replace this with full dataset
+  function populateFilters() {
+    const branchSet = new Set();
+    const categorySet = new Set();
+
+    data.forEach(d => {
+      branchSet.add(d.branch);
+      categorySet.add(d.category);
+    });
+
+    const branchSelect = document.getElementById("branch");
+    const categorySelect = document.getElementById("category");
+
+    branchSet.forEach(b => {
+      branchSelect.innerHTML += `<option value="${b}">${b}</option>`;
+    });
+
+    categorySet.forEach(c => {
+      categorySelect.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+  }
+
+  function applyFilter() {
+    const branch = document.getElementById("branch").value;
+    const category = document.getElementById("category").value;
+    const rank = Number(document.getElementById("rank").value);
+
+    let filtered = data;
+
+    if (branch) {
+      filtered = filtered.filter(d => d.branch === branch);
+    }
+
+    if (category) {
+      filtered = filtered.filter(d => d.category === category);
+    }
+
+    if (rank) {
+      filtered = filtered.filter(d => rank <= d.closingRank);
+    }
+
+    // Sort by closing rank ascending
+    filtered.sort((a, b) => a.closingRank - b.closingRank);
+
+    renderTable(filtered);
+  }
+
+  function renderTable(rows) {
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+
+    rows.forEach(r => {
+      tbody.innerHTML += `
+        <tr>
+          <td>${r.institute}</td>
+          <td>${r.branch}</td>
+          <td>${r.category}</td>
+          <td>${r.closingRank}</td>
+        </tr>
+      `;
+    });
+  }
+
+  populateFilters();
+  renderTable(data);
+</script>
+
+</body>
+</html>
